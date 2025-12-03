@@ -1,16 +1,34 @@
-# In this file we will implement a method to simulate a Diffie-Hellmann key exchange
+# In this file we will implement a method to simulate a Elliptic-Curve-Diffie-Hellmann key exchange
 # Then we will test different methods to force the key
 
 import random
 from time import time
 from functools import partial
 
-# We will use 3 examples of safe primes, p2, p12 and p16. The number corresponds to the numer of digits
-# The generator will be g = 4, this way ord(g) = (p-1) / 2
-# p2 = 23; p12 = 324_528_684_947; p16 = 1_000_000_000_005_719
-p = 23
-g = 4
+# Function to computes the sum of shape k*X (mod p)
+from compute_sum import compute_homothety
 
+# In the whole file we will name (None, None) the infinity point
+
+############################################# Example of curves, prime and generators #########################################################################################
+
+# First example
+# C : y**2 ≡ x**3 + 2x + 2 mod(p)
+# coef = 2       # Term in front of x
+# p = 17
+# G = (5, 1)      
+
+# Second example
+# C : y**2 ≡ x**3 - x + 1 mod(p)
+coef = -1       # Term in front of x
+p = 324_528_684_947
+G = (0, 1) 
+
+# Third example
+# C : y**2 ≡ x**3 + x + 6 mod(p)
+# coef = 1       # Term in front of x
+# p = 1_000_000_000_005_719
+# G = (2, 4)     
 
 class Alice:
     """
@@ -23,10 +41,10 @@ class Alice:
             self.a = random.randint(min, max)
     
     def generate_A(self):
-        self.A = pow(g, self.a, p)
+        self.A = compute_homothety(X = G, k=self.a, coef = coef, p = p)
     
     def compute_key(self, B):
-        self.key = pow(B, self.a, p)
+        self.key = compute_homothety(X = B, k=self.a, coef = coef, p = p)
 
 # Bob has the same features as Alice
 class Bob:
@@ -34,14 +52,14 @@ class Bob:
         self.b = random.randint(min, max)
     
     def generate_B(self):
-        self.B = pow(g, self.b, p)
+        self.B = compute_homothety(X = G, k=self.b, coef = coef, p = p)
     
     def compute_key(self, A):
-        self.key = pow(A, self.b, p)
+        self.key = compute_homothety(X = A, k=self.b, coef = coef, p = p)
 
 def simulate_nego():
     """
-    Simulate a DH key exchange
+    Simulate a ECDH key exchange
     """
     alice = Alice() 
     alice.choose_a()
@@ -58,11 +76,13 @@ def simulate_nego():
 
 # Test if both agents compute the same key
 def test_nego():
-    for _ in range(100):
+    for _ in range(10):
         key_alice, key_bob = simulate_nego()
+
         assert key_alice == key_bob
 
-
+# It passes
+# test_nego()
 
 def computing_time(func):
     """
@@ -80,7 +100,8 @@ def computing_time(func):
 @computing_time
 def compute_key(method, name_method):    
     """
-    method should take A, g, p as arguments and return the solution x if found, else False
+    The goal is to find x where xG = A (mod p)
+    method should take A, G, coef and p as arguments and return the solution x if found, else False
     name_method is a the name of the method represented as a string.
 
     Keep in mind we use tqdm to vizualize progression but by no means one need to reach 100% to find the key as it is randomly distributed in [1, p]
@@ -95,12 +116,12 @@ def compute_key(method, name_method):
     bob.generate_B()
 
     print(f"Starting to force the key with method : {name_method}")
-    a_rogue = method(A = alice.A, g = g, p = p)
+    a_rogue = method(A = alice.A, G = G, coef = coef, p = p)
     if a_rogue == False:
         print("No solutions found")
         return False
 
-    key_rogue = pow(bob.B, a_rogue, p)
+    key_rogue = compute_homothety(X = bob.B, k=a_rogue, coef = coef, p = p)
 
     alice.compute_key(bob.B)
     
@@ -109,24 +130,13 @@ def compute_key(method, name_method):
 ############################################################## Brute force method ############################################################################################################################
 from brute_force import brute_force_discrete_log
 
-# Takes approx 200 hours for p12
-
-# Uncomment here
-compute_key(brute_force_discrete_log, "Brute-force")
+# compute_key(brute_force_discrete_log, "Brute Force")
 
 ############################################################## Little step giant step method ############################################################################################################################
-from baby_step_giant_step import giant_step
+from bsgs import giant_step
 
-# Takes a few seconds for p12, a few minutes for p16
+compute_key(giant_step, "Baby steps Giant steps")
 
-# Uncomment here
-compute_key(giant_step, "Baby step / Giant step")
+############################################################## Pollard's rho method ############################################################################################################################
 
-############################################################## Little step giant step method ############################################################################################################################
-from pollard_rho import dh_pollard_rho
-
-# Takes a few seconds for p12, 1 hour for p16
-
-# Uncomment here
-# compute_key(partial(dh_pollard_rho, nb_tries=3), "Pollard rho")
 

@@ -1,2 +1,4 @@
-DH/ref.txt
+ref.txt
 __pycache__
+DH/__pycache__
+ECDH/__pycache__

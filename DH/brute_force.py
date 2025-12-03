@@ -5,8 +5,10 @@ from tqdm import tqdm
 import sys
 
 def brute_force_discrete_log(A, g, p):
-    for k in tqdm(range(p), desc = "Brute forcing", file=sys.stdout):
-        if pow(g, k, p) == A:
+    current_power = 1
+    for k in tqdm(range(1, p), desc = "Brute forcing", file=sys.stdout):
+        current_power = (current_power * g) % p 
+        if current_power == A:
             return k
 
         
